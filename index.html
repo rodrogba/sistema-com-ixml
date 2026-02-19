@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RodSys - Gestão de Notas Fiscais</title>
+    <!-- Favicon sugerido para parecer um app real -->
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1001/1001022.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0f7ff;
+            letter-spacing: -0.01em;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 1);
+            border: 1px solid #d0e1fd;
+            border-radius: 1.5rem;
+        }
+
+        .highlight-min {
+            animation: pulse-blue 2s infinite;
+            background-color: #e0f2fe !important;
+            border: 2px solid #0ea5e9 !important;
+        }
+
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(14, 165, 233, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #bae6fd;
+            border-radius: 10px;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Estilo para quando o app é "instalado" no celular (PWA) */
+        @media all and (display-mode: standalone) {
+            body { padding-top: env(safe-area-inset-top); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+            <div class="flex items-center gap-4">
+                <div class="bg-[#0c2d57] p-3 rounded-2xl shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-5xl font-[800] text-[#0c2d57] leading-tight">Rod<span class="text-[#3b82f6]">Sys</span></h1>
+                    <div class="flex items-center gap-2">
+                        <p class="text-[#507299] font-bold text-sm tracking-widest uppercase">Organizador de Licitação</p>
+                        <span id="headerCounter" class="bg-blue-600 text-white px-3 py-0.5 rounded-full text-xs font-black hidden">0 ITENS</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
+                <label class="cursor-pointer bg-[#3b82f6] hover:bg-[#2563eb] text-white px-6 py-4 rounded-2xl font-bold transition-all shadow-lg flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Importar XML
+                    <input type="file" id="xmlInput" accept=".xml" class="hidden" multiple>
+                </label>
+
+                <label class="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-red-100 flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Buscar PDF
+                    <input type="file" id="pdfFileInput" accept=".pdf" class="hidden">
+                </label>
+
+                <button id="btnLimpar" class="px-6 py-4 bg-white border-2 border-red-100 text-red-500 rounded-2xl hover:bg-red-50 transition-all font-bold">
+                    Limpar Tudo
+                </button>
+            </div>
+        </header>
+
+        <!-- Filtros e Busca -->
+        <div class="glass-card p-4 mb-8">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Filtrar por nome do produto ou número da nota..." 
+                       class="w-full pl-12 pr-4 py-4 border border-[#d0e1fd] rounded-2xl focus:ring-2 focus:ring-[#3b82f6] outline-none font-medium text-[#0c2d57]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Tabela Principal -->
+        <div class="glass-card shadow-xl overflow-hidden min-h-[400px]">
+            <div class="overflow-x-auto custom-scroll">
+                <table class="w-full text-left border-collapse" id="mainTable">
+                    <thead>
+                        <tr class="bg-[#f8faff] border-b border-[#d0e1fd]">
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest w-32">Nº Nota</th>
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest">Descrição do Item</th>
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest text-center w-24">Qtd</th>
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest text-center w-24">Un</th>
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest text-right">Preço Unit.</th>
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest text-right">Subtotal</th>
+                            <th class="px-6 py-5 text-[11px] font-black text-[#507299] uppercase tracking-widest text-center w-16">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-[#f0f7ff]">
+                        <!-- Itens carregados aqui -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="py-24 text-center">
+                <p class="text-[#93c5fd] font-bold">Importe XMLs ou PDFs para começar a organizar sua licitação.</p>
+            </div>
+        </div>
+
+        <!-- Rodapé Informativo -->
+        <footer class="mt-8 flex flex-col md:flex-row justify-between items-center bg-[#0c2d57] p-8 rounded-3xl text-white gap-6">
+            <div class="flex gap-12">
+                <div>
+                    <p class="text-blue-300 text-[10px] font-black uppercase tracking-tighter">Itens Acumulados</p>
+                    <p id="statCount" class="text-3xl font-black">0</p>
+                </div>
+                <div>
+                    <p class="text-blue-300 text-[10px] font-black uppercase tracking-tighter">Total Geral</p>
+                    <p id="statTotal" class="text-3xl font-black">R$ 0,00</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="encontrarMenorPreco()" class="bg-[#3b82f6] px-8 py-4 rounded-2xl font-bold hover:bg-blue-400 transition-all shadow-lg">Destacar Menores Preços</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Feedback UI -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/90 backdrop-blur-md z-[100] flex items-center justify-center hidden">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <p class="text-[#0c2d57] font-black uppercase tracking-widest text-xs" id="loadingText">Sincronizando...</p>
+        </div>
+    </div>
+
+    <div id="notification" class="fixed bottom-8 right-8 transform translate-y-20 opacity-0 transition-all duration-500 bg-[#0c2d57] text-white px-8 py-4 rounded-2xl shadow-2xl z-50">
+        <span id="notifMessage" class="font-bold text-sm"></span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, query, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuração Firebase (Puxada do ambiente)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'rodsys-licitacao-pro';
+
+        let currentUser = null;
+        let allProducts = [];
+        let unsubscribeRealtime = null;
+
+        // Início da Autenticação
+        const initAuth = async () => {
+            showLoading(true, "Conectando...");
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Erro Auth:", err);
+                showNotification("Falha na conexão com o servidor.");
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                setupRealtimeListener();
+            }
+        });
+
+        initAuth();
+
+        const setupRealtimeListener = () => {
+            if (!currentUser) return;
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'produtos');
+            unsubscribeRealtime = onSnapshot(q, (snapshot) => {
+                allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTable(allProducts);
+            }, (error) => {
+                console.error("Erro Firestore:", error);
+            });
+        };
+
+        // Funções de Interface
+        window.encontrarMenorPreco = () => {
+            document.querySelectorAll('tr').forEach(tr => tr.classList.remove('highlight-min'));
+            const mins = {};
+            allProducts.forEach(p => {
+                const cleanName = p.nome.trim().toUpperCase();
+                if (!mins[cleanName] || p.vUni < mins[cleanName]) mins[cleanName] = p.vUni;
+            });
+            allProducts.forEach(p => {
+                const cleanName = p.nome.trim().toUpperCase();
+                if (p.vUni === mins[cleanName]) {
+                    const el = document.querySelector(`tr[data-id="${p.id}"]`);
+                    if (el) el.classList.add('highlight-min');
+                }
+            });
+            showNotification("Menores preços destacados em azul!");
+        };
+
+        window.excluirItem = async (docId) => {
+            if (!currentUser) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'produtos', docId));
+                showNotification("Item excluído.");
+            } catch (e) {
+                showNotification("Erro ao excluir.");
+            }
+        };
+
+        window.limparDados = async () => {
+            if (!currentUser || allProducts.length === 0) return;
+            if (!confirm("Isso apagará permanentemente todos os itens da lista. Confirmar?")) return;
+            
+            showLoading(true, "Limpando banco...");
+            try {
+                const q = collection(db, 'artifacts', appId, 'public', 'data', 'produtos');
+                const snapshot = await getDocs(q);
+                const batch = writeBatch(db);
+                snapshot.docs.forEach((d) => batch.delete(d.ref));
+                await batch.commit();
+                showNotification("Lista limpa com sucesso!");
+            } catch (e) {
+                showNotification("Erro ao limpar dados.");
+            } finally {
+                showLoading(false);
+            }
+        };
+        document.getElementById('btnLimpar').onclick = window.limparDados;
+
+        const salvarNoBanco = async (itens) => {
+            if (!currentUser) return;
+            showLoading(true, `Salvando ${itens.length} itens...`);
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'produtos');
+            try {
+                const batch = writeBatch(db);
+                itens.forEach(item => {
+                    const newDoc = doc(colRef);
+                    batch.set(newDoc, item);
+                });
+                await batch.commit();
+                showNotification("Sincronização concluída!");
+            } catch (e) {
+                showNotification("Erro ao sincronizar dados.");
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        // Processamento de Arquivos
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        
+        document.getElementById('pdfFileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            showLoading(true, "Processando PDF...");
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let fullText = "";
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        fullText += textContent.items.map(item => item.str).join(' ') + " \n";
+                    }
+                    const itensExtraidos = extrairItensPDF(fullText);
+                    if (itensExtraidos.length > 0) {
+                        await salvarNoBanco(itensExtraidos);
+                    } else {
+                        showNotification("Nenhum item válido encontrado no PDF.");
+                        showLoading(false);
+                    }
+                } catch (err) {
+                    showNotification("Erro ao ler PDF.");
+                    showLoading(false);
+                }
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('xmlInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const itensXml = [];
+            let processedCount = 0;
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(event.target.result, "text/xml");
+                    const nNF = xmlDoc.getElementsByTagName("nNF")[0]?.textContent || "S/N";
+                    const detTags = xmlDoc.getElementsByTagName("det");
+                    
+                    for (let i = 0; i < detTags.length; i++) {
+                        const prod = detTags[i].getElementsByTagName("prod")[0];
+                        itensXml.push({
+                            nota: nNF,
+                            nome: (prod.getElementsByTagName("xProd")[0]?.textContent || "ITEM SEM NOME").toUpperCase(),
+                            qtd: parseFloat(prod.getElementsByTagName("qCom")[0]?.textContent || 0),
+                            unidade: prod.getElementsByTagName("uCom")[0]?.textContent || "UN",
+                            vUni: parseFloat(prod.getElementsByTagName("vUnCom")[0]?.textContent || 0),
+                            vTotal: parseFloat(prod.getElementsByTagName("vProd")[0]?.textContent || 0),
+                            timestamp: Date.now()
+                        });
+                    }
+                    processedCount++;
+                    if (processedCount === files.length && itensXml.length > 0) {
+                        await salvarNoBanco(itensXml);
+                    }
+                };
+                reader.readAsText(file);
+            });
+            e.target.value = '';
+        });
+
+        function extrairItensPDF(text) {
+            const notaMatch = text.match(/(?:NF-E|Nº)\s*(?:Nº)?\s*[:\.]?\s*(\d+(?:\.\d+)*)/i);
+            const numNota = notaMatch ? notaMatch[1].replace(/\./g, '').replace(/^0+/, '') : "S/N";
+            const rowRegex = /(.*?)\s+([A-Z]{1,4})\s+(\d{1,6}(?:[.,]\d{1,4})?)\s+(\d{1,6}(?:[.,]\d{1,4})?)\s+(\d{1,7}(?:[.,]\d{1,4})?)/g;
+            const results = [];
+            let match;
+            while ((match = rowRegex.exec(text)) !== null) {
+                const cleanDesc = match[1].trim().toUpperCase();
+                if (cleanDesc.length > 3) {
+                    results.push({
+                        nota: numNota,
+                        nome: cleanDesc,
+                        qtd: parseNumber(match[3]),
+                        unidade: match[2],
+                        vUni: parseNumber(match[4]),
+                        vTotal: parseNumber(match[5]),
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            return results;
+        }
+
+        function parseNumber(val) {
+            if (!val) return 0;
+            return parseFloat(val.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function renderTable(data) {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = '';
+            
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const filteredData = data.filter(p => 
+                p.nome.toLowerCase().includes(searchVal) || p.nota.includes(searchVal)
+            );
+
+            document.getElementById('emptyState').classList.toggle('hidden', filteredData.length > 0);
+            document.getElementById('headerCounter').classList.toggle('hidden', data.length === 0);
+            document.getElementById('headerCounter').textContent = `${data.length} ITENS`;
+
+            filteredData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            filteredData.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/50 transition-colors border-b border-[#f0f7ff]";
+                tr.setAttribute('data-id', p.id);
+                tr.innerHTML = `
+                    <td class="px-6 py-5 text-xs font-bold text-blue-500 font-mono">#${p.nota}</td>
+                    <td class="px-6 py-5 text-sm font-bold text-[#0c2d57] uppercase leading-tight">${p.nome}</td>
+                    <td class="px-6 py-5 text-sm text-center font-bold text-[#507299]">${p.qtd.toLocaleString('pt-BR')}</td>
+                    <td class="px-6 py-5 text-sm text-center">
+                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-black uppercase">${p.unidade}</span>
+                    </td>
+                    <td class="px-6 py-5 text-sm text-right font-black">R$ ${p.vUni.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td class="px-6 py-5 text-sm text-right font-bold text-blue-600">R$ ${p.vTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td class="px-6 py-5 text-center">
+                        <button onclick="excluirItem('${p.id}')" class="text-red-300 hover:text-red-500 transition-colors p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+            updateStats(filteredData);
+        }
+
+        function updateStats(data) {
+            document.getElementById('statCount').textContent = data.length;
+            const total = data.reduce((acc, curr) => acc + (curr.vTotal || 0), 0);
+            document.getElementById('statTotal').textContent = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        }
+
+        function showLoading(show, msg = "Aguarde...") { 
+            const overlay = document.getElementById('loadingOverlay');
+            document.getElementById('loadingText').textContent = msg;
+            overlay.classList.toggle('hidden', !show); 
+        }
+        
+        function showNotification(msg) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notifMessage').textContent = msg;
+            notif.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => notif.classList.add('translate-y-20', 'opacity-0'), 4000);
+        }
+
+        document.getElementById('searchInput').addEventListener('input', () => renderTable(allProducts));
+    </script>
+</body>
+</html>
