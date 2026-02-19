@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RodSys - Gestão de Notas Fiscais</title>
-    <!-- Favicon sugerido para parecer um app real -->
+    <!-- Ícone para o separador do navegador -->
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1001/1001022.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -58,7 +58,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Estilo para quando o app é "instalado" no celular (PWA) */
+        /* Otimização para "Instalar" como Web App no telemóvel */
         @media all and (display-mode: standalone) {
             body { padding-top: env(safe-area-inset-top); }
         }
@@ -67,7 +67,7 @@
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
-        <!-- Header -->
+        <!-- Cabeçalho -->
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
             <div class="flex items-center gap-4">
                 <div class="bg-[#0c2d57] p-3 rounded-2xl shadow-lg">
@@ -81,7 +81,7 @@
                 <div>
                     <h1 class="text-5xl font-[800] text-[#0c2d57] leading-tight">Rod<span class="text-[#3b82f6]">Sys</span></h1>
                     <div class="flex items-center gap-2">
-                        <p class="text-[#507299] font-bold text-sm tracking-widest uppercase">Organizador de Licitação</p>
+                        <p class="text-[#507299] font-bold text-sm tracking-widest uppercase">Organizador de Licitações</p>
                         <span id="headerCounter" class="bg-blue-600 text-white px-3 py-0.5 rounded-full text-xs font-black hidden">0 ITENS</span>
                     </div>
                 </div>
@@ -110,7 +110,7 @@
             </div>
         </header>
 
-        <!-- Filtros e Busca -->
+        <!-- Filtros e Pesquisa -->
         <div class="glass-card p-4 mb-8">
             <div class="relative">
                 <input type="text" id="searchInput" placeholder="Filtrar por nome do produto ou número da nota..." 
@@ -121,7 +121,7 @@
             </div>
         </div>
 
-        <!-- Tabela Principal -->
+        <!-- Tabela de Itens -->
         <div class="glass-card shadow-xl overflow-hidden min-h-[400px]">
             <div class="overflow-x-auto custom-scroll">
                 <table class="w-full text-left border-collapse" id="mainTable">
@@ -137,16 +137,16 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-[#f0f7ff]">
-                        <!-- Itens carregados aqui -->
+                        <!-- Itens são gerados via JS -->
                     </tbody>
                 </table>
             </div>
             <div id="emptyState" class="py-24 text-center">
-                <p class="text-[#93c5fd] font-bold">Importe XMLs ou PDFs para começar a organizar sua licitação.</p>
+                <p class="text-[#93c5fd] font-bold">Importe ficheiros XML ou PDF para começar a organizar a sua licitação.</p>
             </div>
         </div>
 
-        <!-- Rodapé Informativo -->
+        <!-- Rodapé de Estatísticas -->
         <footer class="mt-8 flex flex-col md:flex-row justify-between items-center bg-[#0c2d57] p-8 rounded-3xl text-white gap-6">
             <div class="flex gap-12">
                 <div>
@@ -154,7 +154,7 @@
                     <p id="statCount" class="text-3xl font-black">0</p>
                 </div>
                 <div>
-                    <p class="text-blue-300 text-[10px] font-black uppercase tracking-tighter">Total Geral</p>
+                    <p class="text-blue-300 text-[10px] font-black uppercase tracking-tighter">Valor Total Geral</p>
                     <p id="statTotal" class="text-3xl font-black">R$ 0,00</p>
                 </div>
             </div>
@@ -164,11 +164,11 @@
         </footer>
     </div>
 
-    <!-- Feedback UI -->
+    <!-- Interface de Feedback -->
     <div id="loadingOverlay" class="fixed inset-0 bg-white/90 backdrop-blur-md z-[100] flex items-center justify-center hidden">
         <div class="text-center">
             <div class="loader mx-auto mb-4"></div>
-            <p class="text-[#0c2d57] font-black uppercase tracking-widest text-xs" id="loadingText">Sincronizando...</p>
+            <p class="text-[#0c2d57] font-black uppercase tracking-widest text-xs" id="loadingText">A Sincronizar...</p>
         </div>
     </div>
 
@@ -181,7 +181,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, onSnapshot, query, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuração Firebase (Puxada do ambiente)
+        // Configuração do Firebase
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -192,9 +192,9 @@
         let allProducts = [];
         let unsubscribeRealtime = null;
 
-        // Início da Autenticação
+        // Gestão de Autenticação
         const initAuth = async () => {
-            showLoading(true, "Conectando...");
+            showLoading(true, "A Ligar ao Servidor...");
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -202,8 +202,8 @@
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Erro Auth:", err);
-                showNotification("Falha na conexão com o servidor.");
+                console.error("Erro na Autenticação:", err);
+                showNotification("Falha na ligação ao servidor.");
             } finally {
                 showLoading(false);
             }
@@ -220,23 +220,31 @@
 
         const setupRealtimeListener = () => {
             if (!currentUser) return;
+            // Caminho obrigatório seguindo a RULE 1
             const q = collection(db, 'artifacts', appId, 'public', 'data', 'produtos');
+            
+            // Ouvinte em tempo real com tratamento de erro (necessário para persistência)
             unsubscribeRealtime = onSnapshot(q, (snapshot) => {
                 allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderTable(allProducts);
             }, (error) => {
-                console.error("Erro Firestore:", error);
+                console.error("Erro no Firestore:", error);
+                showNotification("Erro ao atualizar dados em tempo real.");
             });
         };
 
-        // Funções de Interface
+        // Lógica de Negócio
         window.encontrarMenorPreco = () => {
             document.querySelectorAll('tr').forEach(tr => tr.classList.remove('highlight-min'));
             const mins = {};
+            
             allProducts.forEach(p => {
                 const cleanName = p.nome.trim().toUpperCase();
-                if (!mins[cleanName] || p.vUni < mins[cleanName]) mins[cleanName] = p.vUni;
+                if (!mins[cleanName] || p.vUni < mins[cleanName]) {
+                    mins[cleanName] = p.vUni;
+                }
             });
+
             allProducts.forEach(p => {
                 const cleanName = p.nome.trim().toUpperCase();
                 if (p.vUni === mins[cleanName]) {
@@ -244,31 +252,31 @@
                     if (el) el.classList.add('highlight-min');
                 }
             });
-            showNotification("Menores preços destacados em azul!");
+            showNotification("Menores preços destacados com sucesso!");
         };
 
         window.excluirItem = async (docId) => {
             if (!currentUser) return;
             try {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'produtos', docId));
-                showNotification("Item excluído.");
+                showNotification("Item removido da base de dados.");
             } catch (e) {
-                showNotification("Erro ao excluir.");
+                showNotification("Não foi possível remover o item.");
             }
         };
 
         window.limparDados = async () => {
             if (!currentUser || allProducts.length === 0) return;
-            if (!confirm("Isso apagará permanentemente todos os itens da lista. Confirmar?")) return;
+            if (!confirm("Atenção: Esta ação irá apagar permanentemente todos os registos para todos os utilizadores. Deseja continuar?")) return;
             
-            showLoading(true, "Limpando banco...");
+            showLoading(true, "A limpar base de dados...");
             try {
                 const q = collection(db, 'artifacts', appId, 'public', 'data', 'produtos');
                 const snapshot = await getDocs(q);
                 const batch = writeBatch(db);
                 snapshot.docs.forEach((d) => batch.delete(d.ref));
                 await batch.commit();
-                showNotification("Lista limpa com sucesso!");
+                showNotification("Base de dados limpa!");
             } catch (e) {
                 showNotification("Erro ao limpar dados.");
             } finally {
@@ -279,7 +287,7 @@
 
         const salvarNoBanco = async (itens) => {
             if (!currentUser) return;
-            showLoading(true, `Salvando ${itens.length} itens...`);
+            showLoading(true, `A processar ${itens.length} novos itens...`);
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'produtos');
             try {
                 const batch = writeBatch(db);
@@ -288,21 +296,21 @@
                     batch.set(newDoc, item);
                 });
                 await batch.commit();
-                showNotification("Sincronização concluída!");
+                showNotification("Ficheiros processados e guardados!");
             } catch (e) {
-                showNotification("Erro ao sincronizar dados.");
+                showNotification("Erro ao gravar dados.");
             } finally {
                 showLoading(false);
             }
         };
 
-        // Processamento de Arquivos
+        // Processamento de Ficheiros
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
         
         document.getElementById('pdfFileInput').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            showLoading(true, "Processando PDF...");
+            showLoading(true, "A extrair dados do PDF...");
             const reader = new FileReader();
             reader.onload = async function() {
                 try {
@@ -318,11 +326,11 @@
                     if (itensExtraidos.length > 0) {
                         await salvarNoBanco(itensExtraidos);
                     } else {
-                        showNotification("Nenhum item válido encontrado no PDF.");
+                        showNotification("Nenhum padrão de produto encontrado no PDF.");
                         showLoading(false);
                     }
                 } catch (err) {
-                    showNotification("Erro ao ler PDF.");
+                    showNotification("Erro na leitura do PDF.");
                     showLoading(false);
                 }
                 e.target.value = '';
@@ -368,6 +376,7 @@
         function extrairItensPDF(text) {
             const notaMatch = text.match(/(?:NF-E|Nº)\s*(?:Nº)?\s*[:\.]?\s*(\d+(?:\.\d+)*)/i);
             const numNota = notaMatch ? notaMatch[1].replace(/\./g, '').replace(/^0+/, '') : "S/N";
+            
             const rowRegex = /(.*?)\s+([A-Z]{1,4})\s+(\d{1,6}(?:[.,]\d{1,4})?)\s+(\d{1,6}(?:[.,]\d{1,4})?)\s+(\d{1,7}(?:[.,]\d{1,4})?)/g;
             const results = [];
             let match;
@@ -404,8 +413,9 @@
 
             document.getElementById('emptyState').classList.toggle('hidden', filteredData.length > 0);
             document.getElementById('headerCounter').classList.toggle('hidden', data.length === 0);
-            document.getElementById('headerCounter').textContent = `${data.length} ITENS`;
+            document.getElementById('headerCounter').textContent = `${data.length} ITENS NO SISTEMA`;
 
+            // Ordenação descendente (mais recentes primeiro)
             filteredData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             filteredData.forEach(p => {
@@ -415,12 +425,12 @@
                 tr.innerHTML = `
                     <td class="px-6 py-5 text-xs font-bold text-blue-500 font-mono">#${p.nota}</td>
                     <td class="px-6 py-5 text-sm font-bold text-[#0c2d57] uppercase leading-tight">${p.nome}</td>
-                    <td class="px-6 py-5 text-sm text-center font-bold text-[#507299]">${p.qtd.toLocaleString('pt-BR')}</td>
+                    <td class="px-6 py-5 text-sm text-center font-bold text-[#507299]">${p.qtd.toLocaleString('pt-PT')}</td>
                     <td class="px-6 py-5 text-sm text-center">
                         <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-black uppercase">${p.unidade}</span>
                     </td>
-                    <td class="px-6 py-5 text-sm text-right font-black">R$ ${p.vUni.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                    <td class="px-6 py-5 text-sm text-right font-bold text-blue-600">R$ ${p.vTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td class="px-6 py-5 text-sm text-right font-black">R$ ${p.vUni.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</td>
+                    <td class="px-6 py-5 text-sm text-right font-bold text-blue-600">R$ ${p.vTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</td>
                     <td class="px-6 py-5 text-center">
                         <button onclick="excluirItem('${p.id}')" class="text-red-300 hover:text-red-500 transition-colors p-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -437,7 +447,7 @@
         function updateStats(data) {
             document.getElementById('statCount').textContent = data.length;
             const total = data.reduce((acc, curr) => acc + (curr.vTotal || 0), 0);
-            document.getElementById('statTotal').textContent = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('statTotal').textContent = `R$ ${total.toLocaleString('pt-PT', {minimumFractionDigits: 2})}`;
         }
 
         function showLoading(show, msg = "Aguarde...") { 
